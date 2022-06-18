@@ -2,8 +2,9 @@
 
 class TransactionManager:
     def __init__(self):
-        self.graph_wait_die = 0
-        self.graph_wound_wait = 0
+        self.graph_wait_die = []
+        self.graph_wound_wait = []
+        self.time_stamp = 0
 
     def startTransaction(self, transaction):
         print('\nTransacao [', transaction,'] iniciada')
@@ -15,9 +16,12 @@ class TransactionManager:
         print('\nBloqueio exclusivo no item [', item, '], na transacao [', transaction, ']')
 
     def commitTransaction(self, transaction):
-         print('\nTransacao [', transaction, '] foi validada e seus bloqueios foram liberados')
+        print('\nTransacao [', transaction, '] foi validada e seus bloqueios foram liberados')
 
     def __freeLock(self, transaction):
+        pass
+    
+    def insertGraph(self, transaction, item):
         pass
 
 ##################
@@ -51,4 +55,16 @@ class LockManager:
 
     def U(self, transaction, item):
         #Apaga o bloqueio da transa ̧c ̃ao Tr sobre o item D na Lock Table.
+        pass
+
+###################
+
+class DeadLock:
+    def __init__(self):
+        pass
+    
+    def woundWait(self):
+        pass
+
+    def waitDie(self):
         pass
