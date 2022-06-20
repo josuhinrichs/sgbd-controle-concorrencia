@@ -1,8 +1,9 @@
 METHOD = ""
+LOCK_TABLE_PATH = 'lock_table.txt'
 
 class LockManager:
     def __init__(self):
-        self.lock_table = []
+        self.lock_table = LOCK_TABLE_PATH
         self.wait_queue = {}
 
     def LS(self, transaction, item):
@@ -24,6 +25,14 @@ class LockManager:
     def insertWaitQueue(self, transaction, item, lock):
         #inserir transacao e sua lista de espera no dicionario do Lock Manager
         self.wait_queue[ str(item) ] = [ [transaction,lock] ]
+
+    def insertLock(self, item_id, operation, transaction_id):
+        read = open(self.lock_table, 'w')
+
+        pass
+
+    def saveLockTable(self):
+        pass
         
 
 ###################
@@ -69,6 +78,7 @@ class TransactionManager:
                 return
             # verificar a situação do item na lock table
             #lock = lock_manager.checkLock(item_id)[0] (o tipo do bloqueio que atualmente bloqueia o item)
+
             lock = ""
 
             # caso o item esteja livre de bloqueios ou em bloqueio compartilhado inserimos o lock da operação na lock table
@@ -113,6 +123,9 @@ class Deadlock:
         if (transaction_x.timestamp < transaction_y.timestamp):
             transaction_x.state = "waiting"
             lock_manager.insertWaitQ(transaction_x, item, lock)
+            #insereGrafo(transaction_x, transaction_y)
         else:
             print("--- Transação %d sofreu rollback ---", transaction_x.id)
+            #deve apresentar a lista de espera do item de dado que gerar
+            #Rollback.
         return
