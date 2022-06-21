@@ -115,8 +115,17 @@ class Deadlock:
     def __init__(self):
         pass
     
-    def woundWait(self):
-        pass
+    def woundWait(self, transaction_x, transaction_y, item, lock):
+        if (transaction_x.timestamp < transaction_y.timestamp):
+            print("--- Transação %d sofreu rollback ---", transaction_y.id)
+            #deve apresentar a lista de espera do item de dado que gerar
+            #Rollback.]
+            return True
+        else:
+            transaction_x.state = "waiting"
+            lock_manager.insertWaitQ(transaction_x, item, lock)
+            #insereGrafo(transaction_x, transaction_y)
+            return False
 
     def waitDie(self, transaction_x, transaction_y, item, lock):
         # Tx deseja um dado bloqueado por Ty
@@ -124,8 +133,9 @@ class Deadlock:
             transaction_x.state = "waiting"
             lock_manager.insertWaitQ(transaction_x, item, lock)
             #insereGrafo(transaction_x, transaction_y)
+            return False
         else:
             print("--- Transação %d sofreu rollback ---", transaction_x.id)
             #deve apresentar a lista de espera do item de dado que gerar
             #Rollback.
-        return
+            return True
