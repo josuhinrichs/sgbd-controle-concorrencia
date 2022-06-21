@@ -26,6 +26,7 @@ class LockManager:
 
     def insertWaitQueue(self, transaction, item, lock):
         #inserir transacao e sua lista de espera no dicionario do Lock Manager
+        transaction.status = "waiting"
         self.wait_queue[ str(item) ] = [ [transaction,lock] ]
 
     # Funcao chamdada pelo TrManeger para inserir um bloqueio
@@ -97,6 +98,9 @@ class TransactionManager:
         self.transaction_list[str(transaction_number)] = new_transaction
         print('\nTransacao [', transaction_number,'] iniciada')
         print(METHOD)
+    
+    def getTransaction(self, transaction_id):
+        return self.transaction_list[str(transaction_id)]
 
     def sharedLock(self, transaction, item):
         print('\nBloqueio compartilhado no item [', item, '], na transacao [', transaction, ']')
@@ -119,21 +123,31 @@ class TransactionManager:
                 #makeCommit()
                 return
             # verificar a situação do item na lock table
-            #lock = lock_manager.checkLock(item_id)[0] (o tipo do bloqueio que atualmente bloqueia o item)
-
-            lock = ""
+            checked_lock = lock_manager.checkLock(item_id) #(o tipo do bloqueio que atualmente bloqueia o item)
 
             # caso o item esteja livre de bloqueios ou em bloqueio compartilhado inserimos o lock da operação na lock table
-            if(lock == "S" or lock == ""):
-                #lock_manager.insertLock(item_id, operation, transaction_id)
+            if(checked_lock[0] == ""):
+                lock_manager.insertLock(item_id, operation, transaction_id)
+                return
+            elif(checked_lock[0] == "S"):
+                res = True
+                for locker_transaction_id in checked_lock[1]:
+                    locker_transaction = self.getTransaction(locker_transaction_id)
+
+                    if(METHOD == "wait-die"):
+                        res = self.deadlock.waitDie(transaction, locker_transaction, item_id, operation)
+                    else:
+                        res = self.deadlock.woundWait(transaction, locker_transaction, item_id, operation)
+                    if not res:
+                        break
+                if res:
+                    lock_manager.insertLock(item_id, operation, transaction_id)
                 return
             else:
-                #locker_transaction = lock_manager.checkLock(item_id)[1] (id da transação que atualmente bloqueia o item)
-                locker_transaction = 3
                 if(METHOD == "wait-die"):
-                    self.deadlock.waitDie(transaction, locker_transaction, item_id, operation)
+                    self.deadlock.waitDie(transaction, self.getTransaction(checked_lock[1]), item_id, operation)
                 else:
-                    self.deadlock.woundWait(transaction, locker_transaction, item_id, operation)
+                    self.deadlock.woundWait(transaction, self.getTransaction(checked_lock[1]), item_id, operation)
                 return
         else:
             # caso a transacao esteja em "waiting", a operacao vai para a fila de operacoes da transação
@@ -160,11 +174,11 @@ class Deadlock:
     def woundWait(self, transaction_x, transaction_y, item, lock):
         if (transaction_x.timestamp < transaction_y.timestamp):
             print("--- Transação %d sofreu rollback ---", transaction_y.id)
+            #freeAllLocks()
             #deve apresentar a lista de espera do item de dado que gerar
             #Rollback.]
             return True
         else:
-            transaction_x.state = "waiting"
             lock_manager.insertWaitQ(transaction_x, item, lock)
             #insereGrafo(transaction_x, transaction_y)
             return False
@@ -172,12 +186,12 @@ class Deadlock:
     def waitDie(self, transaction_x, transaction_y, item, lock):
         # Tx deseja um dado bloqueado por Ty
         if (transaction_x.timestamp < transaction_y.timestamp):
-            transaction_x.state = "waiting"
             lock_manager.insertWaitQ(transaction_x, item, lock)
             #insereGrafo(transaction_x, transaction_y)
             return False
         else:
             print("--- Transação %d sofreu rollback ---", transaction_x.id)
+            #freeAllLocks()
             #deve apresentar a lista de espera do item de dado que gerar
             #Rollback.
             return True
