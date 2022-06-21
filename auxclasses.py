@@ -8,15 +8,17 @@ class LockManager:
 
     def LS(self, transaction, item):
 #         Insere um bloqueio no modo compartilhado na Lock Table sobre o item D
-#         para a transacao Tr se puder, caso contrario cria/atualiza a Wait Q de D com a
-#         transacao Tr.
-        pass
+#         para a transacao Tr
+        lock_table_file = open(self.lock_table, 'a')
+        lock_table_file.write(str(item) + ';' + str(transaction) + ';' + 'S' + '\n')
+        lock_table_file.close
 
     def LX(self, transaction, item):
         # Insere um bloqueio no modo exclusivo na Lock Table sobre o item D para a
-        #transaco Tr se puder, caso contrario cria/atualiza a Wait Q de D com a transacao
-        #Tr
-        pass
+        #transaco Tr
+        lock_table_file = open(self.lock_table, 'a')
+        lock_table_file.write(str(item) + ';' + str(transaction) + ';' + 'X' + '\n')
+        lock_table_file.close
 
     def U(self, transaction, item):
         #Apaga o bloqueio da transacao Tr sobre o item D na Lock Table.
@@ -26,10 +28,32 @@ class LockManager:
         #inserir transacao e sua lista de espera no dicionario do Lock Manager
         self.wait_queue[ str(item) ] = [ [transaction,lock] ]
 
+    # Funcao chamdada pelo TrManeger para inserir um bloqueio
     def insertLock(self, item_id, operation, transaction_id):
-        read = open(self.lock_table, 'w')
+        if operation == 'shared-lock':
+            self.LS(transaction_id, item_id)
+        elif operation == 'exclusive-lock':
+            self.LX(transaction_id, item_id)
+        else:
+            return 'Indefined Operation'
+    
+    # Remove todos os bloqueios de uma transacaoo
+    def deleteTransactionLocks(self, transaction):
+        print(transaction)
+        lock_table_file = open(self.lock_table)
+        new_lock_table = []
 
-        pass
+        for line in lock_table_file:
+            list_line_lock_table = line.split(';')
+            if list_line_lock_table[1] != transaction:
+                new_lock_table.append(line)
+        lock_table_file.close
+
+        lock_table_file = open(self.lock_table, 'w')
+        for line in new_lock_table:
+            lock_table_file.write(line)
+        lock_table_file.close
+
 
     def saveLockTable(self):
         pass
@@ -83,7 +107,7 @@ class TransactionManager:
 
             # caso o item esteja livre de bloqueios ou em bloqueio compartilhado inserimos o lock da operação na lock table
             if(lock == "S" or lock == ""):
-                #lock_manager.insertLock(item_id, operation, transaction_id)
+                lock_manager.insertLock(item_id, operation, transaction_id)
                 return
             else:
                 #locker_transaction = lock_manager.checkLock(item_id)[1] (id da transação que atualmente bloqueia o item)
