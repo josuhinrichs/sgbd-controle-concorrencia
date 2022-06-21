@@ -8,7 +8,7 @@ for method in ["wait-die"]:
     print('###### MÉTODO USADO #####:', method)
     for linha in arq_read:
         op = linha
-
+        tx_manager.printGraph(True) # TESTE ---------------------------------------------------------------------------------------------------
         match op[0]:
             case 'B':
                 op_aux = linha.split('T(')

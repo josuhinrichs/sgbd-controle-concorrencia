@@ -147,7 +147,9 @@ class TransactionManager:
         lock_list = lock_manager.wait_queue[str(item)]
         next_op = lock_list[0]
         tupla = lock_manager.wait_queue[str(item)].pop(0)
-        self.removeGraph(tupla[0])
+        
+        #deve receber qual método atualizou o grafo
+        self.removeGraph(tupla[0], True)
 
         next_op[0].status = "active"
         self.executeOperation(next_op[1], next_op[0].id, item)
@@ -205,41 +207,55 @@ class TransactionManager:
             print("##### Transação em espera - Operação colocada na fila #####")
             return False
     
+    def __printGraphAux(self, iter_graph):
+        for key in list(iter_graph.keys()):
+            for u in iter_graph[key]:
+                print(key, " -> ", u)
+
+    def printGraph(self, waitDie):
+        if waitDie:
+            self.__printGraphAux(self.graph_wait_die)
+        else:
+            self.__printGraphAux(self.graph_wound_wait)
+    
+    def __insertGraphAux(self, iter_graph, x_id, y_id):
+        x_exists = False
+        y_exists = False
+        
+        for key in list(iter_graph.keys()):
+            if key == str(x_id):
+                iter_graph[str(x_id)].append(str(y_id))
+                x_exists = True
+            if key == str(y_id):
+                y_exists = True
+            if not x_exists:
+                iter_graph[str(x_id)] = []
+                iter_graph[str(x_id)].append(str(y_id))
+            if not y_exists:
+                iter_graph[str(y_id)] = []
+    
     # x espera pelo y
     def insertGraph(self, transaction_x, transaction_y, waitDie):
         x_id = transaction_x.id
         y_id = transaction_y.id
-
-        x_exists = False
-        y_exists = False
         
         if waitDie:
-            for key in list(self.graph_wait_die.keys()):
-                if key == str(x_id):
-                    self.graph_wait_die[str(x_id)].append(str(y_id))
-                    x_exists = True
-                if key == str(y_id):
-                    y_exists = True
-            if not x_exists:
-                self.graph_wait_die[str(x_id)] = []
-                self.graph_wait_die[str(x_id)].append(str(y_id))
-            if not y_exists:
-                self.graph_wait_die[str(y_id)] = []
+            self.__insertGraphAux(self.graph_wait_die, x_id, y_id)
         else:
-            for key in list(self.graph_wound_wait.keys()):
-                if key == str(x_id):
-                    self.graph_wound_wait[str(x_id)].append(str(y_id))
-                    x_exists = True
-                if key == str(y_id):
-                    y_exists = True
-            if not x_exists:
-                self.graph_wound_wait[str(x_id)] = []
-                self.graph_wound_wait[str(x_id)].append(str(y_id))
-            if not y_exists:
-                self.graph_wound_wait[str(y_id)] = []
+            self.__insertGraphAux(self.graph_wound_wait, x_id, y_id)
 
-    def removeGraph(self, transaction):
-        trans_id = transaction.id
+    def __removeGraphAux(self, transaction_id, iter_graph):
+        print(transaction_id)
+        iter_graph.pop(transaction_id)
+        for key in list(iter_graph.keys()):
+            iter_graph[key].remove(transaction_id)
+
+    def removeGraph(self, transaction, waitDie):
+        trans_id = str(transaction.id)
+        if waitDie:
+            self.__removeGraphAux(trans_id, self.graph_wait_die)
+        else:
+            self.__removeGraphAux(trans_id, self.graph_wound_wait)
 
     def woundWait(self, transaction_x, transaction_y, item, lock):
         if (transaction_x.timestamp < transaction_y.timestamp):
