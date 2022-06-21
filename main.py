@@ -3,11 +3,11 @@ import auxclasses
 arq_read = open("in.txt")
 
 tx_manager = auxclasses.TransactionManager()
-for method in ["wait-die", "wound-wait"]:
+for method in ["wait-die"]:
     auxclasses.METHOD = method
+    print('###### MÉTODO USADO #####:', method)
     for linha in arq_read:
         op = linha
-        # print(op[0])
 
         match op[0]:
             case 'B':
