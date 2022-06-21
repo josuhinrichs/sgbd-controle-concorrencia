@@ -37,15 +37,15 @@ class LockManager:
         else:
             return 'Indefined Operation'
     
-    # Remove todos os bloqueios de uma transacaoo
-    def deleteTransactionLocks(self, transaction):
-        print(transaction)
+    # Remove todos os bloqueios de uma transacao
+    def deleteTransactionLocks(self, transaction_id):
+        print(transaction_id)
         lock_table_file = open(self.lock_table)
         new_lock_table = []
 
         for line in lock_table_file:
             list_line_lock_table = line.split(';')
-            if list_line_lock_table[1] != transaction:
+            if list_line_lock_table[1] != transaction_id:
                 new_lock_table.append(line)
         lock_table_file.close
 
@@ -54,6 +54,24 @@ class LockManager:
             lock_table_file.write(line)
         lock_table_file.close
 
+    #recebe o id do item e retorna uma lista onde o primeiro elemento eh
+    # o tipo do bloqueio e o segundo eh uma lista com as transacoes q tem
+    # o bloqueio
+    def checkLock(self, item_id):
+        lock_table_file = open(self.lock_table)
+        lock = ''
+        transactions = []
+        for line in lock_table_file:
+            list_line_lock_table = line.split(';')
+            if list_line_lock_table[0] == item_id:
+                if list_line_lock_table[2] == 'X':
+                    return [list_line_lock_table[2], [list_line_lock_table[1]]]
+                else:
+                    lock = list_line_lock_table[2]
+                    transactions.append(list_line_lock_table[1])
+        lock_table_file.close()
+        lock = lock.replace('\n', '')
+        return [lock, transactions]
 
     def saveLockTable(self):
         pass
@@ -101,8 +119,8 @@ class TransactionManager:
                 #makeCommit()
                 return
             # verificar a situação do item na lock table
-            #lock = lock_manager.checkLock(item_id)[0] (o tipo do bloqueio que atualmente bloqueia o item)
-
+            lock = lock_manager.checkLock(item_id)[0] #(o tipo do bloqueio que atualmente bloqueia o item)
+            print("lock: ", lock)
             lock = ""
 
             # caso o item esteja livre de bloqueios ou em bloqueio compartilhado inserimos o lock da operação na lock table
