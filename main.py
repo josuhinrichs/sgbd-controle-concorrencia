@@ -4,7 +4,7 @@ tx_manager = auxclasses.TransactionManager()
 for method in ["wait-die", "wound-wait"]:
     auxclasses.METHOD = method
     print('\n----------- MÉTODO USADO -----------\n', method)
-    arq_read = open("in.txt")
+    arq_read = open("in3.txt")
 
     for linha in arq_read:
         op = linha

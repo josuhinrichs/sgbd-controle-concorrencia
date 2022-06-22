@@ -303,7 +303,7 @@ class TransactionManager:
             return False
         elif (transaction_x.timestamp == transaction_y.timestamp):
             lock_manager.U(transaction_x.id, item)
-            return False
+            return True
         else:
             print("\n##### Transação %d sofreu rollback #####" % transaction_x.id)
             lock_manager.deleteTransactionLocks(transaction_x.id)
