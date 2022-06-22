@@ -99,7 +99,7 @@ class LockManager:
         return itens
 
     def printWaitQueue(self, item_id):
-        if (str(item_id) in self.wait_queue):
+        if (str(item_id) in self.wait_queue and self.wait_queue[str(item_id)]):
             wait_list = self.wait_queue[ str(item_id) ]
         else:
             print(" - Fila vazia")
@@ -138,7 +138,7 @@ class TransactionManager:
     def commitTransaction(self, transaction_id):
         item_lists = lock_manager.checkLockTransaction(transaction_id)
         lock_manager.deleteTransactionLocks(transaction_id)
-        print('\n##### Transacao [', transaction_id, '] foi validada e seus bloqueios foram liberados#####')
+        print('\n##### Transacao [', transaction_id, '] foi validada e seus bloqueios foram liberados #####')
         
         self.manageQueue(transaction_id, item_lists)
 
@@ -149,23 +149,28 @@ class TransactionManager:
         item = item_lists[0]
             
         lock_list = lock_manager.wait_queue[str(item)]
+
+        if( not  lock_list):
+            return
         next_op = lock_list[0]
         tupla = lock_manager.wait_queue[str(item)].pop(0)
         
-        #deve receber qual método atualizou o grafo
-        #self.removeGraph(tupla[0].id)
+        self.removeGraph(tupla[0].id)
 
         next_op[0].status = "active"
         self.executeOperation(next_op[1], next_op[0].id, item)
-        
-        transaction = self.getTransaction(transaction)
 
-        for op in transaction.operations_queue:
+        aux = 0
+        for op in next_op[0].operations_queue:
             if (not self.executeOperation(op[0], op[1], op[2])):
-                transaction.operations_queue.pop()
+                next_op[0].operations_queue.pop()
                 break
-            transaction.operations_queue.pop(0)
-                    
+            else:
+                aux += 1
+        for i in range(aux):
+            next_op[0].operations_queue.pop(0)
+                
+
 
     def executeOperation(self, operation, transaction_id, item_id):
         transaction = self.getTransaction(transaction_id)
@@ -208,15 +213,20 @@ class TransactionManager:
         else:
             # caso a transacao esteja em "waiting", a operacao vai para a fila de operacoes da transação
             transaction.operations_queue.append([operation, transaction_id, item_id])
-            print("##### Transação em espera - Operação colocada na fila #####")
+            print("\n<<<<<< Transação %s em espera - Operação %s colocada na fila de operações >>>>>>\n" %(transaction_id,operation))
             return False
     
     def __printGraphAux(self, iter_graph):
+        printed = False
         for key in list(iter_graph.keys()):
             for u in iter_graph[key]:
                 print(key, " -> ", u)
+                printed = True
+        if not printed:
+            print(" - Grafo vazio")
 
     def printGraph(self):
+        print("\n##### Grafo de espera #####")
         if METHOD == 'wait-die':
             self.__printGraphAux(self.graph_wait_die)
         else:
@@ -232,13 +242,13 @@ class TransactionManager:
                 x_exists = True
             if key == str(y_id):
                 y_exists = True
-            if not x_exists:
-                iter_graph[str(x_id)] = []
-                iter_graph[str(x_id)].append(str(y_id))
-            if not y_exists:
-                iter_graph[str(y_id)] = []
+        if not x_exists:
+            iter_graph[str(x_id)] = []
+            iter_graph[str(x_id)].append(str(y_id))
+        if not y_exists:
+            iter_graph[str(y_id)] = []
     
-    # x espera pelo y
+    # o item x espera pelo item y
     def insertGraph(self, transaction_x, transaction_y):
         x_id = transaction_x.id
         y_id = transaction_y.id
@@ -247,12 +257,14 @@ class TransactionManager:
             self.__insertGraphAux(self.graph_wait_die, x_id, y_id)
         else:
             self.__insertGraphAux(self.graph_wound_wait, x_id, y_id)
+        self.printGraph()
 
     def __removeGraphAux(self, transaction_id, iter_graph):
-        print(transaction_id)
         iter_graph.pop(str(transaction_id))
         for key in list(iter_graph.keys()):
-            iter_graph[key].remove(transaction_id)
+            for vert in iter_graph[key]:
+                if vert == transaction_id:
+                    iter_graph[key].remove(transaction_id)
 
     def removeGraph(self, transaction):
         trans_id = str(transaction)
@@ -260,12 +272,13 @@ class TransactionManager:
             self.__removeGraphAux(trans_id, self.graph_wait_die)
         else:
             self.__removeGraphAux(trans_id, self.graph_wound_wait)
+        self.printGraph()
 
     def woundWait(self, transaction_x, transaction_y, item, lock):
         if (transaction_x.timestamp < transaction_y.timestamp):
-            print("\n##### Transação %d sofreu rollback #####", transaction_y.id)
+
+            print("\n##### Transação %d sofreu rollback #####" % transaction_y.id)
             lock_manager.deleteTransactionLocks(transaction_y.id)
-            
             #deve apresentar a lista de espera do item de dado que gerar
             #Rollback.]
             print("\n##### FILA DE ESPERA DO ITEM #####")
@@ -277,8 +290,8 @@ class TransactionManager:
             return True
         else:
             lock_manager.insertWaitQueue(transaction_x, item, lock)
-            print("\n##### Transação %d foi postergada #####", transaction_x.id)
-            #self.insertGraph(transaction_x, transaction_y)
+            print("\n##### Transação %d foi postergada #####" % transaction_x.id)
+            self.insertGraph(transaction_x, transaction_y)
             return False
 
     def waitDie(self, transaction_x, transaction_y, item, lock):
@@ -286,7 +299,7 @@ class TransactionManager:
         if (transaction_x.timestamp < transaction_y.timestamp ):
             print("\n##### Transação %d foi postergada #####" % transaction_x.id)
             lock_manager.insertWaitQueue(transaction_x, item, lock)
-            #self.insertGraph(transaction_x, transaction_y)
+            self.insertGraph(transaction_x, transaction_y)
             return False
         elif (transaction_x.timestamp == transaction_y.timestamp):
             lock_manager.U(transaction_x.id, item)
@@ -294,11 +307,9 @@ class TransactionManager:
         else:
             print("\n##### Transação %d sofreu rollback #####" % transaction_x.id)
             lock_manager.deleteTransactionLocks(transaction_x.id)
-            
-            #deve apresentar a lista de espera do item de dado que gerar
-            #Rollback.
             print("\n##### FILA DE ESPERA DO ITEM #####")
             lock_manager.printWaitQueue(item)
+            
             return False
             
 ##################
@@ -306,8 +317,8 @@ class TransactionManager:
 class Transaction:
     def __init__(self, number):
         self.id = number
-        self.timestamp = 0#timestamp
-        self.status = "active" #active|commited|waiting
+        self.timestamp = 0      #timestamp
+        self.status = "active"  #active|waiting
         self.operations_queue = []
 
 ##################
