@@ -99,11 +99,15 @@ class LockManager:
         return itens
 
     def printWaitQueue(self, item_id):
-        wait_list = self.wait_queue[ str(item_id) ]
+        if (str(item_id) in self.wait_queue):
+            wait_list = self.wait_queue[ str(item_id) ]
+        else:
+            print(" - Fila vazia")
+            return
         
         for tuple in wait_list:
             print(" - Transação ", tuple[0].id)
-        pass
+        return
 
     def saveLockTable(self):
         pass
@@ -139,7 +143,7 @@ class TransactionManager:
         self.manageQueue(transaction_id, item_lists)
 
     def manageQueue(self, transaction, item_lists):
-        if(not item_lists or not lock_manager.wait_queue[str(item_lists[0])]):
+        if(not item_lists or not str(item_lists[0]) in lock_manager.wait_queue):
             return
 
         item = item_lists[0]
@@ -149,7 +153,7 @@ class TransactionManager:
         tupla = lock_manager.wait_queue[str(item)].pop(0)
         
         #deve receber qual método atualizou o grafo
-        self.removeGraph(tupla[0], True)
+        #self.removeGraph(tupla[0].id)
 
         next_op[0].status = "active"
         self.executeOperation(next_op[1], next_op[0].id, item)
@@ -212,8 +216,8 @@ class TransactionManager:
             for u in iter_graph[key]:
                 print(key, " -> ", u)
 
-    def printGraph(self, waitDie):
-        if waitDie:
+    def printGraph(self):
+        if METHOD == 'wait-die':
             self.__printGraphAux(self.graph_wait_die)
         else:
             self.__printGraphAux(self.graph_wound_wait)
@@ -235,24 +239,24 @@ class TransactionManager:
                 iter_graph[str(y_id)] = []
     
     # x espera pelo y
-    def insertGraph(self, transaction_x, transaction_y, waitDie):
+    def insertGraph(self, transaction_x, transaction_y):
         x_id = transaction_x.id
         y_id = transaction_y.id
         
-        if waitDie:
+        if METHOD == 'wait-die':
             self.__insertGraphAux(self.graph_wait_die, x_id, y_id)
         else:
             self.__insertGraphAux(self.graph_wound_wait, x_id, y_id)
 
     def __removeGraphAux(self, transaction_id, iter_graph):
         print(transaction_id)
-        iter_graph.pop(transaction_id)
+        iter_graph.pop(str(transaction_id))
         for key in list(iter_graph.keys()):
             iter_graph[key].remove(transaction_id)
 
-    def removeGraph(self, transaction, waitDie):
-        trans_id = str(transaction.id)
-        if waitDie:
+    def removeGraph(self, transaction):
+        trans_id = str(transaction)
+        if METHOD == 'wait-die':
             self.__removeGraphAux(trans_id, self.graph_wait_die)
         else:
             self.__removeGraphAux(trans_id, self.graph_wound_wait)
@@ -274,7 +278,7 @@ class TransactionManager:
         else:
             lock_manager.insertWaitQueue(transaction_x, item, lock)
             print("\n##### Transação %d foi postergada #####", transaction_x.id)
-            self.insertGraph(transaction_x, transaction_y, True)
+            #self.insertGraph(transaction_x, transaction_y)
             return False
 
     def waitDie(self, transaction_x, transaction_y, item, lock):
@@ -282,7 +286,7 @@ class TransactionManager:
         if (transaction_x.timestamp < transaction_y.timestamp ):
             print("\n##### Transação %d foi postergada #####" % transaction_x.id)
             lock_manager.insertWaitQueue(transaction_x, item, lock)
-            self.insertGraph(transaction_x, transaction_y, True)
+            #self.insertGraph(transaction_x, transaction_y)
             return False
         elif (transaction_x.timestamp == transaction_y.timestamp):
             lock_manager.U(transaction_x.id, item)
@@ -290,8 +294,6 @@ class TransactionManager:
         else:
             print("\n##### Transação %d sofreu rollback #####" % transaction_x.id)
             lock_manager.deleteTransactionLocks(transaction_x.id)
-            lock_manager.insertWaitQueue(transaction_x, item, lock)
-            print(transaction_x.status)
             
             #deve apresentar a lista de espera do item de dado que gerar
             #Rollback.
@@ -299,7 +301,6 @@ class TransactionManager:
             lock_manager.printWaitQueue(item)
             return False
             
-
 ##################
 
 class Transaction:
